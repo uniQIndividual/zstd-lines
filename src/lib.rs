@@ -26,7 +26,7 @@ files.par_zstd_lines(|line| {
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use zstd::stream::read::Decoder;
 
 const TAR_BLOCK_SIZE: usize = 512;
