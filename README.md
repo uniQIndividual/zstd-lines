@@ -23,12 +23,15 @@ fn main() {
         PathBuf::from("bungo-pgcr.tar.zst"),
     ];
 
-    files.par_zstd_lines(|line| {
+    files.par_zstd_lines(|line, path| {
         // Implement your logic here
-        println!("Decompressed line: ", line);
+        println!("Decompressed line: {} in {:?}", line, path);
     });
 }
 ```
+- ``line`` is a single decompressed line without the linebreak
+- ``path`` is the path of the zst file if you need to attribute the line
+
 zstd-lines tries to automatically detect .tar files by their file extension and treat them as one continuous files omitting all .tar headers (no integrity checks are performed).
 
 You can call ``par_zstd_lines()`` on everything that fulfills ``AsRef<Path>``:

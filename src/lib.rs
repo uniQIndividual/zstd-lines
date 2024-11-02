@@ -17,8 +17,8 @@ use zstd_lines::ParZstdLines;
 use std::path::PathBuf;
 
 let files = vec![PathBuf::from("file.jsonl.zst"), PathBuf::from("file.jsonl.tar.zst")];
-files.par_zstd_lines(|line| {
-    println!("{}", line);
+files.par_zstd_lines(|line, path| {
+    println!("Decompressed line: {} in {:?}", line, path);
 });
 ```
 */
@@ -43,8 +43,8 @@ const TAR_BLOCK_SIZE: usize = 512;
 /// use std::path::PathBuf;
 ///
 /// let files = vec![PathBuf::from("file.jsonl.zst"), PathBuf::from("file.jsonl.tar.zst")];
-/// files.par_zstd_lines(|line| {
-///     println!("{}", line);
+/// files.par_zstd_lines(|line, path| {
+///     println!("Decompressed line: {} in {:?}", line, path);
 /// });
 /// ```
 
@@ -60,13 +60,13 @@ pub trait ParZstdLines {
     /// # Example
     /// ```
     /// let files = vec![PathBuf::from("file.jsonl.zst"), PathBuf::from("file.jsonl.tar.zst")];
-    /// files.par_zstd_lines(|line| {
-    ///     println!("{}", line);
+    /// files.par_zstd_lines(|line, path| {
+    ///     println!("Decompressed line: {} in {:?}", line, path);
     /// });
     /// ```
     fn par_zstd_lines<F>(&self, line_handler: F)
     where
-        F: Fn(String) + Sync + Send;
+        F: Fn(String, &Path) + Sync + Send;
 }
 
 impl<T> ParZstdLines for Vec<T>
@@ -75,7 +75,7 @@ where
 {
     fn par_zstd_lines<F>(&self, line_handler: F)
     where
-        F: Fn(String) + Sync + Send,
+        F: Fn(String, &Path) + Sync + Send,
     {
         self.par_iter().for_each(|path| {
             let path = path.as_ref();
@@ -99,7 +99,7 @@ where
 /// Process a regular zstd-compressed file, passing each line to the line handler function.
 fn process_zstd_file<F>(path: &Path, line_handler: &F) -> io::Result<()>
 where
-    F: Fn(String) + Sync + Send,
+    F: Fn(String, &Path) + Sync + Send,
 {
     let file = File::open(path)?;
     let decoder = Decoder::new(file)?;
@@ -107,7 +107,7 @@ where
 
     for line in reader.lines() {
         match line {
-            Ok(content) => line_handler(content),
+            Ok(content) => line_handler(content, path),
             Err(e) => eprintln!("Error reading line from {}: {}", path.display(), e),
         }
     }
@@ -118,7 +118,7 @@ where
 /// Process a tar file line by line, skipping TAR headers and handling file boundaries.
 fn process_tar_zstd_file<F>(path: &Path, line_handler: &F) -> io::Result<()>
 where
-    F: Fn(String) + Sync + Send,
+    F: Fn(String, &Path) + Sync + Send,
 {
     let file = File::open(path)?;
     let mut decoder = Decoder::new(file)?;
@@ -138,7 +138,7 @@ where
             // Send the remainder as a line if not empty
             if !remainder.is_empty() {
                 if let Ok(line) = String::from_utf8(remainder.clone()) {
-                    line_handler(line);
+                    line_handler(line, path);
                 }
                 remainder.clear();
             }
@@ -154,7 +154,7 @@ where
                 let mut line_bytes = remainder.clone(); // Include previous remainder
                 line_bytes.extend_from_slice(&buffer[offset..end]);
                 if let Ok(line) = String::from_utf8(line_bytes) {
-                    line_handler(line);
+                    line_handler(line, path);
                 }
                 remainder.clear();
                 offset = i + 1;
@@ -170,7 +170,7 @@ where
     // Process any remaining content in remainder as a final line
     if !remainder.is_empty() {
         if let Ok(line) = String::from_utf8(remainder) {
-            line_handler(line);
+            line_handler(line, path);
         }
     }
 
