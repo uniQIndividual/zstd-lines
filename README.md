@@ -1,5 +1,9 @@
 # zstd-lines
-A very simple crate to perform line-by-line operations on zstd compressed files.
+A very simple crate to perform line-by-line operations on zstd compressed files. It also features a few benefits for working on large datasets:
+
+- Zstd decompression is performed in stream mode for minimal memory usage
+- Uses rayon to work on many files in parallel
+- Automatically deals with .tar files and strips the tar header
 
 Simply add zstd-lines to your ``Cargo.toml`` configuration:
 ```toml
