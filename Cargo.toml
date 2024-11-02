@@ -1,0 +1,9 @@
+[package]
+name = "zstd_lines"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rayon = "1.5.3"
+tar = "0.4.42"
+zstd = "0.13.2"
